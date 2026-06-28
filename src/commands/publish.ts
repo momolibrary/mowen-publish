@@ -12,8 +12,9 @@
  * 7. 记录日志
  */
 
-import { readFileSync, mkdirSync, existsSync, rmSync } from 'fs';
-import { dirname, join, isAbsolute } from 'path';
+import { readFileSync, mkdirSync, existsSync, rmSync, writeFileSync, appendFileSync } from 'fs';
+import { dirname, join, isAbsolute, resolve } from 'path';
+import { homedir } from 'os';
 import { lint } from '../core/lint.js';
 import { markdownToNoteAtom } from '../core/markdown.js';
 import { uploadImage } from '../core/upload.js';
@@ -224,7 +225,38 @@ export async function publish(
   const url = `https://mowen.cn/note/${noteId}`;
   console.log(`✅ Note created: ${noteId}`);
 
-  // Step 7: 输出摘要
+  // Step 7: 记录日志
+  try {
+    const logDir = resolve(homedir(), '.claude', 'memory');
+    if (existsSync(logDir)) {
+      const logFile = join(logDir, `mowen_publish_${new Date().toISOString().replace(/[:.]/g, '-')}.md`);
+      const logContent = `# 墨问发布记录
+
+- **时间**: ${new Date().toISOString()}
+- **文件**: ${file}
+- **Note ID**: ${noteId}
+- **链接**: ${url}
+- **封面图**: ${coverImageId || '无'}
+- **表格图片**: ${tableImages.length} 张
+- **内嵌图片**: ${imageCount} 张
+
+## 质量检查
+
+### 预处理
+${lintResult1.results.map(r => `- ${r.passed ? '✅' : '❌'} ${r.message}`).join('\n')}
+
+### 后处理
+${lintResult2.results.map(r => `- ${r.passed ? '✅' : '❌'} ${r.message}`).join('\n')}
+`;
+      writeFileSync(logFile, logContent);
+      console.log(`📄 发布日志已保存: ${logFile}`);
+    }
+  } catch (error) {
+    // 日志记录失败不阻塞发布
+    console.warn('⚠️  保存发布日志失败:', error);
+  }
+
+  // Step 8: 输出摘要
   console.log('\n========================================');
   console.log('  发布完成！');
   console.log('========================================');
