@@ -3,6 +3,7 @@
 import { Command } from 'commander';
 import { VERSION } from './index.js';
 import { lint } from './core/lint.js';
+import { publish } from './commands/publish.js';
 import { readFileSync } from 'fs';
 
 const program = new Command();
@@ -20,9 +21,24 @@ program
   .option('--strict', '严格模式')
   .option('--api-key <key>', '墨问 API Key')
   .action(async (file: string, options: Record<string, unknown>) => {
-    console.log('Publish command - work in progress');
-    console.log('File:', file);
-    console.log('Options:', options);
+    try {
+      console.log('\n🚀 开始发布文章...\n');
+      const result = await publish(file, {
+        cover: options.cover as string,
+        table: options.table as boolean,
+        strict: options.strict as boolean,
+        apiKey: options.apiKey as string,
+      });
+      console.log('\n========================================');
+      console.log('  发布完成！');
+      console.log('========================================');
+      console.log(`\n📝 Note ID: ${result.noteId}`);
+      console.log(`🔗 访问链接: ${result.url}`);
+      console.log('\n⚠️  笔记当前为草稿状态，需登录墨问平台手动公开\n');
+    } catch (error) {
+      console.error('\n❌ 发布失败:', error);
+      process.exit(1);
+    }
   });
 
 program
