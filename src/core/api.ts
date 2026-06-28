@@ -169,4 +169,39 @@ export class MowenAPI {
       this.options
     );
   }
+
+  /**
+   * 通过 URL 上传文件
+   * @param fileType 1=图片, 2=音频, 3=PDF
+   * @param url 文件 URL
+   * @param fileName 文件名（可选）
+   */
+  async uploadViaUrl(
+    fileType: number,
+    url: string,
+    fileName?: string
+  ): Promise<{ fileId: string }> {
+    return callApi<{ fileId: string }>(
+      '/api/open/api/v1/upload/url',
+      'POST',
+      {
+        fileType,
+        url,
+        ...(fileName ? { fileName } : {}),
+      },
+      this.options
+    );
+  }
+
+  /**
+   * 重置 API Key
+   */
+  async resetApiKey(): Promise<{ apiKey: string }> {
+    return callApi<{ apiKey: string }>(
+      '/api/open/api/v1/auth/key/reset',
+      'POST',
+      {},
+      this.options
+    );
+  }
 }
