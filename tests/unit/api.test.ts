@@ -79,4 +79,25 @@ describe('MowenAPI', () => {
       await expect(api.setPrivacy('note-id', 'private')).resolves.toBeUndefined();
     });
   });
+
+  describe('resetApiKey', () => {
+    it('should reset API key successfully', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ apiKey: 'new-api-key' }),
+      });
+
+      const result = await api.resetApiKey();
+      expect(result).toEqual({ apiKey: 'new-api-key' });
+    });
+
+    it('should throw error when reset fails', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ reason: 'Unauthorized' }),
+      });
+
+      await expect(api.resetApiKey()).rejects.toThrow('API error: Unauthorized');
+    });
+  });
 });

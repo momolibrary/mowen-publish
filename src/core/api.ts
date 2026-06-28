@@ -192,4 +192,16 @@ export class MowenAPI {
       this.options
     );
   }
+
+  /**
+   * 重置 API Key
+   */
+  async resetApiKey(): Promise<{ apiKey: string }> {
+    return callApi<{ apiKey: string }>(
+      '/api/open/api/v1/auth/key/reset',
+      'POST',
+      {},
+      this.options
+    );
+  }
 }
