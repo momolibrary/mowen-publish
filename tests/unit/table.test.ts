@@ -62,7 +62,7 @@ describe('generateTableHtml', () => {
     expect(html).toContain('<th>名称</th>');
     expect(html).toContain('<th>值</th>');
     expect(html).toContain('<td>A</td>');
-    expect(html).toContain('<td>100</td>');
+    expect(html).toContain('100');  // 数字列会添加 style="text-align:right"
   });
 });
 

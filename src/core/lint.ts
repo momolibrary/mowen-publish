@@ -220,7 +220,7 @@ export function lint(mdContent: string, options: LintOptions = {}): LintReport {
   const {
     hasCover = false,
     hasTableImages = false,
-    minChars = 100,
+    minChars = 500,  // 与原仓库一致
     maxChars = 10000,
     strict = false,
   } = options;
@@ -233,9 +233,11 @@ export function lint(mdContent: string, options: LintOptions = {}): LintReport {
   results.push(checkArticleLength(mdContent, minChars, maxChars));
   results.push(checkUnprocessedMarkers(mdContent));
 
+  // strict 模式：所有检查必须通过
+  // 非 strict 模式：只有配图和表格检查是阻塞项
   const passed = strict
     ? results.every((r) => r.passed)
-    : results.filter((r) => !r.passed).length === 0;
+    : results[0].passed && results[1].passed;  // 配图和表格必须通过
 
   const passedCount = results.filter((r) => r.passed).length;
   const summary = `${passedCount}/${results.length} 通过`;

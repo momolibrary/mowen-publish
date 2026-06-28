@@ -103,13 +103,13 @@ export class MowenAPI {
   }
 
   /**
-   * 创建笔记
+   * 创建笔记（自动设置为 private）
    */
   async createNote(
     body: NoteAtomDoc,
     settings: NoteSettings = {}
   ): Promise<{ noteId: string }> {
-    return callApi<{ noteId: string }>(
+    const result = await callApi<{ noteId: string }>(
       '/api/open/api/v1/note/create',
       'POST',
       {
@@ -121,6 +121,15 @@ export class MowenAPI {
       },
       this.options
     );
+
+    // 自动设置为 private（与原仓库行为一致）
+    try {
+      await this.setPrivacy(result.noteId, 'private');
+    } catch (error) {
+      console.warn(`Warning: Failed to set privacy for note ${result.noteId}:`, error);
+    }
+
+    return result;
   }
 
   /**
