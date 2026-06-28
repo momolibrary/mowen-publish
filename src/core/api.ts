@@ -28,36 +28,68 @@ function getApiKey(options: ApiOptions): string {
 }
 
 /**
- * 通用 API 调用
+ * 延迟函数
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * 通用 API 调用（带重试）
  */
 async function callApi<T>(
   endpoint: string,
   method: string,
   body: Record<string, unknown>,
-  options: ApiOptions
+  options: ApiOptions,
+  retries = 3
 ): Promise<T> {
   const apiKey = getApiKey(options);
   const baseUrl = options.baseUrl || 'https://open.mowen.cn';
 
-  const response = await fetch(`${baseUrl}${endpoint}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  let lastError: Error | null = null;
 
-  if (!response.ok) {
-    throw new Error(`API call failed: ${response.status} ${response.statusText}`);
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(`${baseUrl}${endpoint}`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      // 处理速率限制
+      if (response.status === 429) {
+        const retryAfter = response.headers.get('Retry-After');
+        const waitMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : 1000 * attempt;
+        console.warn(`Rate limited, waiting ${waitMs}ms before retry...`);
+        await delay(waitMs);
+        continue;
+      }
+
+      if (!response.ok) {
+        throw new Error(`API call failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = (await response.json()) as Record<string, unknown>;
+      if ('reason' in data && data.reason) {
+        throw new Error(`API error: ${data.reason}`);
+      }
+
+      return data as T;
+    } catch (error) {
+      lastError = error as Error;
+      if (attempt < retries) {
+        const waitMs = 1000 * attempt;
+        console.warn(`API call failed (attempt ${attempt}/${retries}), retrying in ${waitMs}ms...`);
+        await delay(waitMs);
+      }
+    }
   }
 
-  const data = (await response.json()) as Record<string, unknown>;
-  if ('reason' in data && data.reason) {
-    throw new Error(`API error: ${data.reason}`);
-  }
-
-  return data as T;
+  throw lastError || new Error('API call failed after retries');
 }
 
 /**

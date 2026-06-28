@@ -84,9 +84,22 @@ program
   .description('上传图片到墨问')
   .option('--api-key <key>', '墨问 API Key')
   .action(async (file: string, options: Record<string, unknown>) => {
-    console.log('Upload command - work in progress');
-    console.log('File:', file);
-    console.log('Options:', options);
+    try {
+      console.log('\n🖼️  上传图片...\n');
+      const { uploadImage } = await import('./core/upload.js');
+      const result = await uploadImage(file, {
+        apiKey: options.apiKey as string,
+      });
+      console.log('\n========================================');
+      console.log('  上传完成！');
+      console.log('========================================');
+      console.log(`\n📝 File ID: ${result.fileId}`);
+      console.log(`📄 文件名: ${result.fileName}`);
+      console.log('');
+    } catch (error) {
+      console.error('\n❌ 上传失败:', error);
+      process.exit(1);
+    }
   });
 
 program.parse();

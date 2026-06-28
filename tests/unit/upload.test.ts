@@ -73,7 +73,8 @@ describe('uploadImage', () => {
   });
 
   it('should throw error when prepare fails', async () => {
-    mockFetch.mockResolvedValueOnce({
+    // Mock all retry attempts
+    mockFetch.mockResolvedValue({
       ok: false,
       status: 401,
       statusText: 'Unauthorized',
@@ -85,7 +86,8 @@ describe('uploadImage', () => {
   });
 
   it('should throw error when prepare returns error code', async () => {
-    mockFetch.mockResolvedValueOnce({
+    // Mock all retry attempts
+    mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ code: 400, message: 'Invalid request' }),
     });

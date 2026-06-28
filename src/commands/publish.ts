@@ -2,12 +2,13 @@
  * 发布命令实现
  */
 
-import { readFileSync } from 'fs';
+import { readFileSync, mkdirSync, existsSync } from 'fs';
+import { dirname, join } from 'path';
 import { lint } from '../core/lint.js';
 import { markdownToNoteAtom } from '../core/markdown.js';
 import { uploadImage } from '../core/upload.js';
 import { MowenAPI } from '../core/api.js';
-import { extractTables } from '../core/table.js';
+import { extractTables, renderAllTables, replaceTablesWithMarkers } from '../core/table.js';
 
 export interface PublishOptions {
   cover?: string;
@@ -28,7 +29,7 @@ export async function publish(
   file: string,
   options: PublishOptions = {}
 ): Promise<PublishResult> {
-  const mdContent = readFileSync(file, 'utf-8');
+  let mdContent = readFileSync(file, 'utf-8');
 
   // Step 1: Quality check
   console.log('🔍 Step 1: Quality check...');
@@ -57,12 +58,36 @@ export async function publish(
     console.log(`✅ Cover image uploaded: ${coverImageId}`);
   }
 
-  // Step 3: Extract and upload table images (placeholder)
+  // Step 3: Render and upload table images
   const tableImages: Array<{ index: number; fileId: string }> = [];
   if (options.table !== false) {
     const tables = extractTables(mdContent);
     if (tables.length > 0) {
-      console.log(`📊 Found ${tables.length} tables (table rendering not yet implemented)`);
+      console.log(`📊 Step 3: Rendering ${tables.length} tables...`);
+
+      // Create temp directory for table images
+      const tempDir = join(dirname(file), '.mowen-publish-tables');
+      if (!existsSync(tempDir)) {
+        mkdirSync(tempDir, { recursive: true });
+      }
+
+      // Render tables to images
+      const renderedTables = await renderAllTables(mdContent, tempDir);
+
+      // Upload table images
+      for (const table of renderedTables) {
+        const imagePath = join(tempDir, `table_${table.index}.png`);
+        const uploadResult = await uploadImage(imagePath, { apiKey: options.apiKey });
+        tableImages.push({
+          index: table.index,
+          fileId: uploadResult.fileId,
+        });
+        console.log(`  ✅ Table ${table.index + 1} uploaded: ${uploadResult.fileId}`);
+      }
+
+      // Replace tables with markers in markdown
+      mdContent = replaceTablesWithMarkers(mdContent, renderedTables);
+      console.log('✅ Tables rendered and uploaded');
     }
   }
 

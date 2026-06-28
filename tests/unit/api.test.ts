@@ -46,7 +46,8 @@ describe('MowenAPI', () => {
     });
 
     it('should throw error when API returns error', async () => {
-      mockFetch.mockResolvedValueOnce({
+      // Mock all retry attempts
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ reason: 'Invalid request' }),
       });

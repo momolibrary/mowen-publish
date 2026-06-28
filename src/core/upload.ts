@@ -45,37 +45,69 @@ function getApiKey(options: UploadOptions): string {
 }
 
 /**
- * 步骤 1: 获取上传授权
+ * 延迟函数
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * 步骤 1: 获取上传授权（带重试）
  */
 async function prepareUpload(
   fileName: string,
-  options: UploadOptions
+  options: UploadOptions,
+  retries = 3
 ): Promise<PrepareResponse> {
   const apiKey = getApiKey(options);
   const baseUrl = options.baseUrl || 'https://open.mowen.cn';
 
-  const response = await fetch(`${baseUrl}/api/open/api/v1/upload/prepare`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      fileType: 1,
-      fileName,
-    }),
-  });
+  let lastError: Error | null = null;
 
-  if (!response.ok) {
-    throw new Error(`Upload prepare failed: ${response.status} ${response.statusText}`);
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(`${baseUrl}/api/open/api/v1/upload/prepare`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileType: 1,
+          fileName,
+        }),
+      });
+
+      // 处理速率限制
+      if (response.status === 429) {
+        const retryAfter = response.headers.get('Retry-After');
+        const waitMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : 1000 * attempt;
+        console.warn(`Rate limited, waiting ${waitMs}ms before retry...`);
+        await delay(waitMs);
+        continue;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Upload prepare failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = (await response.json()) as Record<string, unknown>;
+      if ('code' in data) {
+        throw new Error(`Upload prepare error: ${JSON.stringify(data)}`);
+      }
+
+      return data as unknown as PrepareResponse;
+    } catch (error) {
+      lastError = error as Error;
+      if (attempt < retries) {
+        const waitMs = 1000 * attempt;
+        console.warn(`Upload prepare failed (attempt ${attempt}/${retries}), retrying in ${waitMs}ms...`);
+        await delay(waitMs);
+      }
+    }
   }
 
-  const data = (await response.json()) as Record<string, unknown>;
-  if ('code' in data) {
-    throw new Error(`Upload prepare error: ${JSON.stringify(data)}`);
-  }
-
-  return data as unknown as PrepareResponse;
+  throw lastError || new Error('Upload prepare failed after retries');
 }
 
 /**
