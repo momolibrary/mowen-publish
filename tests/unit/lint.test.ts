@@ -103,7 +103,7 @@ describe('lint', () => {
     });
 
     it('should return correct summary', () => {
-      const md = '# 文章\n\n![image](test.png)\n\n' + '内容'.repeat(100);
+      const md = '# 文章\n\n![image](test.png)\n\n' + '内容'.repeat(300);
       const result = lint(md);
       expect(result.summary).toBe('5/5 通过');
     });
