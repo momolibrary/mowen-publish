@@ -12,7 +12,7 @@
  * 7. 记录日志
  */
 
-import { readFileSync, mkdirSync, existsSync, rmSync, writeFileSync, appendFileSync } from 'fs';
+import { readFileSync, mkdirSync, existsSync, rmSync, writeFileSync } from 'fs';
 import { dirname, join, isAbsolute, resolve } from 'path';
 import { homedir } from 'os';
 import { lint } from '../core/lint.js';
